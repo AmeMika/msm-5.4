@@ -29,24 +29,40 @@ Binding driver MSM8953 yang belum tersedia atau tidak cocok
   qcom,msm8953-pinctrl tidak ditemukan di tabel driver kernel 5.4.
   Akibatnya clock, reset, dan GPIO/pinctrl MSM8953 belum dapat dianggap
   didukung hanya dengan mengaktifkan config.
+
+todo list : 
+
 - APM dan power-management:
   qcom,msm8953-apm dan qcom,mpm-gic-msm8953 tidak memiliki binding yang
   cocok. Driver QCOM MPM yang ada menggunakan binding qcom,mpm dan data
   SoC yang lebih baru; fallback qcom,mpm-gic pada DTS ini juga bukan
   binding platform yang cocok.
+
+todo list :
+
+
 - Bus/bandwidth dan power rail khusus:
   qcom,msm-bus-device, qcom,devbw, qcom,cpr4-msm8953-apss-regulator,
   qcom,mem-acc-regulator, dan qcom,msm8953-gfx-ldo tidak memiliki driver
   binding yang cocok.
+
+todo list :
+
 - Kamera (driver stack MSM lama tidak ditemukan):
   qcom,msm-cam, qcom,msm-cam-smmu*, qcom,csiphy-v3.5,
   qcom,csid-v3.5.1, qcom,ispif-v3.0, qcom,vfe40, qcom,vfe,
   qcom,jpeg, qcom,cpp, qcom,cci, qcom,actuator, qcom,eeprom,
   dan qcom,camera.
+
+todo list :
+
 - Video encoder/decoder:
   qcom,msm-vidc serta node turunannya qcom,msm-vidc,context-bank,
   qcom,msm-vidc,bus, dan qcom,msm-vidc,governor,table tidak memiliki
   binding driver yang cocok di tree ini.
+
+todo list :
+
 - Audio legacy:
   qcom,msm8952-audio-codec, qcom,msm8952-audio-slim-codec,
   qcom,msm-cdc-pinctrl, qcom,msm-dai-slim, qcom,msm-cpe-lsm,
@@ -54,20 +70,32 @@ Binding driver MSM8953 yang belum tersedia atau tidak cocok
   qcom,wsa881x-i2c-codec, dan qcom,wcd9xxx-irq tidak memiliki binding
   driver yang cocok. Beberapa node berstatus disabled, tetapi stack audio
   aktif tetap memerlukan port driver yang sesuai.
+
+todo list :
+
 - Display legacy:
   qcom,mdss_mdp dan qcom,mdss-dsi-ctrl ditemukan di DRM MSM, tetapi
   qcom,mdss-fb, qcom,mdss-dsi, qcom,mdss_wb, qcom,mdss_rotator, serta
   qcom,mdss_dsi_pll_8953 tidak ditemukan. Kecocokan dua node DRM tersebut
   tidak membuktikan bahwa properti downstream MSM8953 lainnya didukung.
+
+todo list :
+
 - DSP/FastRPC:
   DTS memakai qcom,msm-fastrpc-legacy-compute dan
   qcom,msm-fastrpc-legacy-compute-cb; driver FastRPC pada tree ini
   mengenali qcom,msm-fastrpc-compute dan qcom,msm-fastrpc-compute-cb.
   Nama berbeda, sehingga node DTS yang ada tidak akan match tanpa port/
   alias yang sesuai. Validasi perilaku sebelum sekadar mengganti string.
+
+todo list :
+
 - WCNSS:
   DTS memakai qcom,wcnss_wlan, sedangkan driver kontrol WCNSS yang ada
   mengenali qcom,wcnss. Binding serta integrasi firmware perlu diselaraskan.
+
+todo list :
+
 - PMIC/peripheral:
   qcom,spmi-gpio tidak cocok dengan binding GPIO PMIC yang tersedia
   (binding driver memakai nama kompatibel spesifik PMIC); qcom,qpnp-adc-tm
@@ -75,10 +103,15 @@ Binding driver MSM8953 yang belum tersedia atau tidak cocok
   qcom,adc-tm5-iio. Driver RTC yang ada mengenali qcom,pm8941-rtc dan
   beberapa varian lain, tetapi bukan qcom,pm8916-rtc. Tidak ditemukan
   binding untuk qcom,qpnp-coincell atau qcom,qpnp-typec.
+
+todo list :
+
 - Peripheral legacy lain:
   qcom,ipa, qcom,rmnet-ipa, qcom,iris_fm, qcom,msm-gladiator,
   qcom,msm-rtb, qcom,nq-nci, dan qcom,camera-flash tidak memiliki
   compatible yang cocok di source driver kernel 5.4 ini.
+
+todo list :
 
 Binding yang sudah ditemukan
 ----------------------------
