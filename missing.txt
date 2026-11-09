@@ -1,0 +1,239 @@
+Audit kompatibilitas DTS MSM8953 vs source driver kernel 5.4
+===========================================================
+
+Cakupan: file msm8953*, pm8953*, dan msm-arm-smmu-8953.dtsi di
+arch/arm64/boot/dts/vendor-legacy/qcom, ditambah semua DTS/DTSI bertingkat
+di arch/arm64/boot/dts/vendor-legacy/qcom/mi8953. Total 168 file (64
+file SoC/PMIC dan 104 file board MI8953). Pemeriksaan mencocokkan string
+compatible DTS dengan tabel device/driver di drivers/ dan sound/. String
+yang tidak cocok bukan selalu bug: board ID, node metadata, dan node test
+tidak memerlukan driver tersendiri. Daftar di bawah ini difokuskan pada
+node perangkat fungsional yang tidak memiliki binding yang cocok.
+
+Penghambat build DTS
+--------------------
+- CONFIG_OF_IGNORE_QCOM_VENDOR_DTS=y membuat arch/arm64/boot/dts/Makefile
+  melewati seluruh direktori vendor-legacy. Opsi ini sudah dinonaktifkan
+  pada arch/arm64/configs/vendor/msm8953_QGKI.config.
+- arch/arm64/boot/dts/vendor-legacy/qcom/Makefile memilih DTB/DTBO MSM8953
+  dengan CONFIG_ARCH_MSM8953, tetapi simbol tersebut tidak didefinisikan
+  di Kconfig pada tree ini. Menonaktifkan opsi ignore saja belum cukup
+  untuk menghasilkan target DTB MSM8953; simbol/aturan build tersebut
+  perlu diselaraskan.
+
+Binding driver MSM8953 yang belum tersedia atau tidak cocok
+-----------------------------------------------------------
+- Clock dan pinctrl:
+  qcom,gcc-8953, qcom,gcc-gfx-8953, qcom,gcc-mdss-8953,
+  qcom,cpu-clock-8953, qcom,cc-debug-8953, dan
+  qcom,msm8953-pinctrl tidak ditemukan di tabel driver kernel 5.4.
+  Akibatnya clock, reset, dan GPIO/pinctrl MSM8953 belum dapat dianggap
+  didukung hanya dengan mengaktifkan config.
+- APM dan power-management:
+  qcom,msm8953-apm dan qcom,mpm-gic-msm8953 tidak memiliki binding yang
+  cocok. Driver QCOM MPM yang ada menggunakan binding qcom,mpm dan data
+  SoC yang lebih baru; fallback qcom,mpm-gic pada DTS ini juga bukan
+  binding platform yang cocok.
+- Bus/bandwidth dan power rail khusus:
+  qcom,msm-bus-device, qcom,devbw, qcom,cpr4-msm8953-apss-regulator,
+  qcom,mem-acc-regulator, dan qcom,msm8953-gfx-ldo tidak memiliki driver
+  binding yang cocok.
+- Kamera (driver stack MSM lama tidak ditemukan):
+  qcom,msm-cam, qcom,msm-cam-smmu*, qcom,csiphy-v3.5,
+  qcom,csid-v3.5.1, qcom,ispif-v3.0, qcom,vfe40, qcom,vfe,
+  qcom,jpeg, qcom,cpp, qcom,cci, qcom,actuator, qcom,eeprom,
+  dan qcom,camera.
+- Video encoder/decoder:
+  qcom,msm-vidc serta node turunannya qcom,msm-vidc,context-bank,
+  qcom,msm-vidc,bus, dan qcom,msm-vidc,governor,table tidak memiliki
+  binding driver yang cocok di tree ini.
+- Audio legacy:
+  qcom,msm8952-audio-codec, qcom,msm8952-audio-slim-codec,
+  qcom,msm-cdc-pinctrl, qcom,msm-dai-slim, qcom,msm-cpe-lsm,
+  qcom,msm-audio-apr, qcom,pmic-analog-codec, qcom,tasha-slim-pgd,
+  qcom,wsa881x-i2c-codec, dan qcom,wcd9xxx-irq tidak memiliki binding
+  driver yang cocok. Beberapa node berstatus disabled, tetapi stack audio
+  aktif tetap memerlukan port driver yang sesuai.
+- Display legacy:
+  qcom,mdss_mdp dan qcom,mdss-dsi-ctrl ditemukan di DRM MSM, tetapi
+  qcom,mdss-fb, qcom,mdss-dsi, qcom,mdss_wb, qcom,mdss_rotator, serta
+  qcom,mdss_dsi_pll_8953 tidak ditemukan. Kecocokan dua node DRM tersebut
+  tidak membuktikan bahwa properti downstream MSM8953 lainnya didukung.
+- DSP/FastRPC:
+  DTS memakai qcom,msm-fastrpc-legacy-compute dan
+  qcom,msm-fastrpc-legacy-compute-cb; driver FastRPC pada tree ini
+  mengenali qcom,msm-fastrpc-compute dan qcom,msm-fastrpc-compute-cb.
+  Nama berbeda, sehingga node DTS yang ada tidak akan match tanpa port/
+  alias yang sesuai. Validasi perilaku sebelum sekadar mengganti string.
+- WCNSS:
+  DTS memakai qcom,wcnss_wlan, sedangkan driver kontrol WCNSS yang ada
+  mengenali qcom,wcnss. Binding serta integrasi firmware perlu diselaraskan.
+- PMIC/peripheral:
+  qcom,spmi-gpio tidak cocok dengan binding GPIO PMIC yang tersedia
+  (binding driver memakai nama kompatibel spesifik PMIC); qcom,qpnp-adc-tm
+  tidak cocok dengan driver ADC thermal yang tersedia dengan nama
+  qcom,adc-tm5-iio. Driver RTC yang ada mengenali qcom,pm8941-rtc dan
+  beberapa varian lain, tetapi bukan qcom,pm8916-rtc. Tidak ditemukan
+  binding untuk qcom,qpnp-coincell atau qcom,qpnp-typec.
+- Peripheral legacy lain:
+  qcom,ipa, qcom,rmnet-ipa, qcom,iris_fm, qcom,msm-gladiator,
+  qcom,msm-rtb, qcom,nq-nci, dan qcom,camera-flash tidak memiliki
+  compatible yang cocok di source driver kernel 5.4 ini.
+
+Binding yang sudah ditemukan
+----------------------------
+Di antara node yang diperiksa, driver kernel 5.4 memiliki binding untuk
+qcom,msm8953-tsens, qcom,spmi-pmic-arb, qcom,smp2p,
+qcom,smp2p-sleepstate, qcom,pil-q6v55-mss, qcom,usb-bam-msm,
+qcom,kgsl-3d0, qcom,msm-ssc-sensors, qcom,mdss_mdp, dan
+qcom,mdss-dsi-ctrl. Opsi Kconfig untuk driver yang relevan dan tersedia
+ditambahkan ke msm8953_QGKI.config; opsi Kconfig tidak dapat menggantikan
+driver atau binding yang memang tidak ada.
+
+PMIC tambahan: PMI8950 dan PMI8940
+----------------------------------
+Kedua DTS menyertakan `pmi8950.dtsi` atau `pmi8940.dtsi` pada varian
+MSM8953. Node PMIC bersama yang cocok dengan driver kernel tersedia:
+- qcom,spmi-pmic -> MFD_SPMI_PMIC
+- qcom,qpnp-revid -> QPNP_REVID
+- qcom,qpnp-power-on -> INPUT_QPNP_POWER_ON
+- qcom,spmi-vadc -> QCOM_SPMI_VADC
+- qcom,spmi-mpp -> PINCTRL_QCOM_SPMI_PMIC
+Opsi Kconfig untuk binding tersebut sudah ditambahkan ke
+arch/arm64/configs/vendor/msm8953_QGKI.config.
+
+Binding/driver PMIC yang hilang atau tidak kompatibel:
+- qcom,spmi-gpio (ada pada PMI8950, tidak ada pada PMI8940): driver GPIO
+  SPMI tersedia, tetapi tabel compatible memakai nama per-PMIC dan tidak
+  mengenali qcom,spmi-gpio atau PMI8950. Tidak ada kecocokan untuk node
+  GPIO ini pada konfigurasi DTS yang diperiksa.
+- qcom,qpnp-smbcharger: tidak ada driver dengan compatible ini. Driver
+  QPNP_SMB5 pada tree ini menggunakan compatibles PMIC yang lebih baru,
+  bukan pengganti langsung charger PMI8950/PMI8940. Node ini aktif dan
+  dipakai juga sebagai extcon/OTG supply.
+- qcom,qpnp-fg: fuel-gauge legacy tidak ditemukan. QPNP_QG yang tersedia
+  memakai binding fuel-gauge lain, bukan binding pengganti langsung.
+- qcom,msm-bcl: tidak ditemukan. Driver BCL yang ada memakai
+  qcom,msm-bcl-soc, sehingga compatible dan implementasinya berbeda.
+- qcom,leds-qpnp: tidak ditemukan.
+- qcom,qpnp-wled: WLED driver tersedia, tetapi tidak ditemukan binding
+  compatible ini pada driver tersebut.
+- qcom,qpnp-flash-led: tidak ditemukan; LEDS_QPNP_FLASH_V2 memakai nama
+  qcom,qpnp-flash-led-v2 dan tidak otomatis cocok dengan node legacy.
+- qcom,qpnp-labibb-regulator dan qcom,qpnp-haptics: tidak ditemukan.
+  Node LAB/IBB memang berstatus disabled; WLED dan flash LED berstatus
+  aktif.
+- qcom,camera-flash (di msm8953-pmi8950.dtsi dan
+  msm8953-pmi8940.dtsi): tidak ditemukan driver binding yang cocok.
+
+qcom,pwm-lpg didukung oleh driver PWM_QTI_LPG yang tersedia, tetapi node
+PWM pada kedua DTS berstatus disabled. Karena itu opsi tersebut belum
+ditambahkan ke config; aktifkan hanya bila node PWM memang akan digunakan.
+Kesimpulan: opsi PMIC yang tersedia dan diperlukan untuk node yang match
+telah masuk config. Kesenjangan di atas memerlukan port driver atau
+penyesuaian binding yang divalidasi terhadap hardware; menambah opsi
+config saja tidak akan mengaktifkan fungsi PMIC legacy tersebut.
+
+Audit lanjutan: bus, devfreq, dan properti
+-----------------------------------------
+Pemeriksaan ini meliputi 168 file DTS/DTSI MSM8953/PM8953/PMI8950/PMI8940,
+SMMU, dan board MI8953. Ada 1149 nama properti qcom unik di cakupan
+tersebut; 251 ditemukan sebagai string literal di source drivers/ atau
+sound/. Terdapat 188 nilai compatible qcom unik. Hasil pencarian string
+adalah triase, bukan klaim bahwa setiap properti/compatible lain pasti
+salah: beberapa diproses lewat framework generik, macro, binding lain,
+firmware, atau driver yang hilang. Untuk menemukan seluruh regresi
+4.19-ke-5.4 secara literal dibutuhkan source tree 4.19 pembanding; audit
+ini mengukur dukungan yang ada di tree 5.4 repository ini.
+
+Bus / bandwidth:
+- `msm8953-bus.dtsi` memakai `qcom,msm-bus-device` dan topology legacy
+  BIMC/PCNOC/SNOC: `qcom,fab-dev`, `qcom,bus-dev`, `qcom,bus-type`,
+  `qcom,buswidth`, `qcom,connections`, `qcom,mas-rpm-id`,
+  `qcom,slv-rpm-id`, `qcom,qport`, `qcom,qos-mode`, `qcom,base-name`,
+  `qcom,base-offset`, `qcom,qos-off`, priority/aggregation fields, serta
+  ID master/slave dari msm-bus-ids.h. Driver/provider framework MSM bus
+  beserta parser topology tersebut tidak ada pada tree ini. `qcom,devbw`
+  juga tidak cocok dengan devfreq-simple-dev (yang menerima
+  `devfreq-simple-dev`); maka konfigurasi bandwidth GPU/CPU/SoC yang
+  merujuk ke framework ini tidak otomatis bekerja.
+- Client-node fields `qcom,msm-bus,name`, `num-cases`, `num-paths`,
+  `vectors-KBps`, `support-bus-scaling`/`qcom,bus-control`, dan bus
+  vector port/active-only fields kehilangan provider/client framework
+  MSM bus. Sebagian driver (mis. SDHCI/QPIC) masih memiliki parser lokal
+  untuk vector, tetapi itu tidak menyediakan provider RPM/topology global.
+  Tidak ada provider interconnect 8953 yang dapat menggantikan topology
+  legacy secara langsung pada tree ini.
+- Ada driver yang cocok untuk node monitor `qcom,bimc-bwmon2`,
+  `qcom,arm-memlat-cpugrp`, dan `qcom,arm-compute-mon`. Config
+  `QCOM_BIMC_BWMON`, `ARM_MEMLAT_MON`, dan `DEVFREQ_GOV_MEMLAT` kini
+  diaktifkan. Ini hanya mengaktifkan monitor/governor; tidak memulihkan
+  bus-vote provider yang hilang.
+
+Pemeriksaan properti pada node dengan kompatibilitas berbeda:
+- `qcom,devbw` memakai `governor = "bw_vbif"`,
+  `qcom,src-dst-ports`, `operating-points-v2`, dan
+  `qcom,active-only`; tidak ditemukan driver yang match compatible ini,
+  sehingga properti-properti tersebut tidak diparse oleh devfreq driver
+  yang tersedia.
+- `qcom,gpubw-dev` dan `qcom,bus-control` pada KGSL menghubungkan GPU ke
+  vote bus legacy; konsumen/provider legacy-nya tidak tersedia.
+- `qcom,msm-bus,vectors-KBps` pada QSEE, RNG, crypto, UART/SDHCI, IPA,
+  USB, VIDC, dan display tidak menjamin vote aktif: consumer/provider
+  framework lama tidak lengkap/tersedia pada tree ini.
+- Properti QoS/latency/display seperti `qcom,mdss-vbif-qos-*-setting`,
+  `qcom,max-bw-settings`, dan register/topology QoS bus legacy tidak
+  memiliki parser pada DRM MSM generik yang sepadan dengan driver
+  downstream. Hanya properti yang dipakai langsung oleh node modern yang
+  dapat dipastikan berfungsi; sisanya perlu validasi port per node.
+- Pada subsystem tanpa driver yang cocok (camera, VIDC, audio legacy,
+  charger/fuel-gauge/BCL/WLED/flash PMIC, dan clock/pinctrl 8953),
+  properti khusus milik subsystem tersebut juga tidak punya konsumen
+  kernel di tree ini. properti tersebut tidak dapat diperbaiki dengan
+  menambahkan CONFIG saja.
+
+Validasi config: opsi baru bus-monitor/governor memiliki definisi Kconfig
+di tree ini. Belum dapat menjalankan `olddefconfig` karena tool `flex`
+tidak tersedia pada environment sebelumnya.
+
+Audit board MI8953 (mi8953/)
+----------------------------
+Semua 104 file DTS/DTSI pada direktori board MI8953 (common, mido, rosy,
+vince, ysl) sudah masuk hitungan properti di atas. Temuan board yang
+penting:
+- Charger dan fuel gauge: node qcom,qpnp-smbcharger dan qcom,qpnp-fg
+  aktif pada board dan dirujuk sebagai extcon/OTG supply. Binding/driver
+  yang cocok tidak ada (lihat bagian PMIC). Karena itu qcom,battery-data
+  serta properti konfigurasi charger/fuel-gauge tidak akan diterapkan
+  oleh driver legacy yang dimaksud.
+- Kamera: board memakai qcom,camera, qcom,actuator, qcom,eeprom,
+  qcom,camera-flash dan qcom,camera-frontflash. Stack kamera MSM legacy
+  maupun parser node ini tidak tersedia; konfigurasi sensor/flash/
+  actuator/EEPROM tidak berfungsi hanya dengan mengaktifkan config.
+- Display: node board memakai banyak properti panel downstream, misalnya
+  qcom,mdss-dsi-panel-name, qcom,mdss-dsi-on-command,
+  qcom,mdss-dsi-panel-timings-phy-v2 dan
+  qcom,mdss-dsi-bl-pmic-control-type. Properti/command panel tersebut
+  tidak ditemukan diparse di DRM MSM pada tree ini. Adanya driver untuk
+  qcom,mdss-dsi-ctrl tidak cukup untuk mengartikan data panel downstream.
+- Periferal board lain yang tidak punya kecocokan compatible literal
+  meliputi qcom,leds-qpnp; touchscreen focaltech, goodix, Imagis, dan
+  Novatek dengan variasi compatible khusus board; fingerprint FPC/Goodix;
+  serta Awinic, TI TAS2557, dan infrared board. Sebagian driver generik
+  memang ada (mis. Focaltech, Goodix, Novatek), tetapi compatible yang
+  digunakan board tidak sama dengan nilai yang didaftarkan driver:
+  focaltech,fts_ts-mi8953 vs focaltech,fts_ts, serta
+  novatek,NVT-ts_vince vs novatek,NVT-ts. Untuk node ini, sekadar
+  mengaktifkan CONFIG driver belum membuktikan perangkat akan bind.
+- Board juga memuat metadata Android, label sensor/panel, data baterai
+  dan tabel command panel; tidak setiap property yang tidak ditemukan
+  sebagai string di source merupakan binding hilang. Daftar properti
+  khusus yang belum memiliki konsumen kernel yang sesuai terutama
+  mengikuti kelompok driver hilang di atas (charger/fuel-gauge, kamera,
+  dan panel downstream); properti terkait vote bus legacy tercakup pada
+  bagian bus.
+
+Tidak ada CONFIG tambahan khusus board MI8953 yang ditambahkan: bagi
+binding yang hilang atau compatible yang berbeda, mengaktifkan opsi
+driver tidak akan memperbaiki binding. Periksa dan port driver atau
+selaraskan compatible setelah memastikan semantik dan dukungan hardware.
