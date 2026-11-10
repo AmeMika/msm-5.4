@@ -38,17 +38,14 @@ int msm_clock_init(struct clock_init_data *data);
 int find_vdd_level(struct clk *clk, unsigned long rate);
 extern struct list_head orphan_clk_list;
 
-#if defined(CONFIG_DEBUG_FS) && defined(CONFIG_COMMON_CLK_MSM)
+#if defined(CONFIG_COMMON_CLK_MSM)
 int clock_debug_register(struct clk *clk);
-void clock_debug_print_enabled(bool print_parent);
-#elif defined(CONFIG_DEBUG_FS) && defined(CONFIG_COMMON_CLK_QCOM)
-void clock_debug_print_enabled(bool print_parent);
+void msm_clock_debug_print_enabled(bool print_parent);
 #else
 static inline int clock_debug_register(struct clk *unused)
 {
 	return 0;
 }
-static inline void clock_debug_print_enabled(void) { return; }
 #endif
 
 #endif

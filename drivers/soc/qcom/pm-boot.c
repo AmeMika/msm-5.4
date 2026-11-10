@@ -20,7 +20,7 @@ static void (*msm_pm_boot_after_pc)(unsigned int cpu);
 
 static int msm_pm_tz_boot_init(void)
 {
-	phys_addr_t warmboot_addr = msm_pm_boot_entry;
+	void *warmboot_addr = (void *)msm_pm_boot_entry;
 
 	return qcom_scm_set_warm_boot_addr_mc(warmboot_addr, ~0U, ~0U, ~0U,
 								SCM_FLAG_WARMBOOT_MC);

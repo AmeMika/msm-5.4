@@ -40,12 +40,20 @@
 #include <asm/cacheflush.h>
 #include <asm/cputype.h>
 #include <asm/system_misc.h>
+#include <asm/sysreg.h>
+#ifdef CONFIG_CPU_V7
+#include <asm/irqflags.h>
+#endif
 #ifdef CONFIG_VFP
 #include <asm/vfp.h>
 #endif
 #include <soc/qcom/jtag.h>
 #include "pm-boot.h"
 #include "idle.h"
+
+#if defined(CONFIG_SMP) && !defined(CONFIG_CPU_V7)
+extern void secondary_holding_pen(void);
+#endif
 
 #define SCM_CMD_TERMINATE_PC	(0x2)
 #define SCM_CMD_CORE_HOTPLUGGED (0x10)
@@ -95,7 +103,11 @@ static DEFINE_MUTEX(msm_pc_debug_mutex);
 
 static bool msm_pm_is_L1_writeback(void)
 {
+#ifdef CONFIG_ARM64
+	unsigned long cache_id = 0;
+#else
 	u32 cache_id = 0;
+#endif
 
 #if defined(CONFIG_CPU_V7)
 	u32 sel = 0;
@@ -108,14 +120,11 @@ static bool msm_pm_is_L1_writeback(void)
 		     );
 	return cache_id & BIT(30);
 #elif defined(CONFIG_ARM64)
-	u32 sel = 0;
+	unsigned long sel = 0;
 
-	asm volatile("msr csselr_el1, %[ccselr]\n\t"
-		     "isb\n\t"
-		     "mrs %[ccsidr],ccsidr_el1\n\t"
-		     : [ccsidr]"=r" (cache_id)
-		     : [ccselr]"r" (sel)
-		    );
+	write_sysreg(sel, csselr_el1);
+	isb();
+	cache_id = read_sysreg(ccsidr_el1);
 	return cache_id & BIT(30);
 #else
 #error No valid CPU arch selected
@@ -191,10 +200,8 @@ static bool msm_pm_pc_hotplug(void)
 	flag = lpm_cpu_pre_pc_cb(cpu);
 
 	if (!msm_pm_tz_flushes_cache) {
-		if (flag == MSM_SCM_L2_OFF)
+		if (flag == MSM_SCM_L2_OFF || msm_pm_is_L1_writeback())
 			flush_cache_all();
-		else if (msm_pm_is_L1_writeback())
-			flush_cache_louis();
 	}
 
 	msm_pc_inc_debug_count(cpu, MSM_PC_ENTRY_COUNTER);
@@ -234,10 +241,8 @@ int msm_pm_collapse(unsigned long unused)
 	flag = lpm_cpu_pre_pc_cb(cpu);
 
 	if (!msm_pm_tz_flushes_cache) {
-		if (flag == MSM_SCM_L2_OFF)
+		if (flag == MSM_SCM_L2_OFF || msm_pm_is_L1_writeback())
 			flush_cache_all();
-		else if (msm_pm_is_L1_writeback())
-			flush_cache_louis();
 	}
 	msm_pc_inc_debug_count(cpu, MSM_PC_ENTRY_COUNTER);
 	qcom_scm_cpu_power_down(flag & SCM_FLUSH_FLAG_MASK);
@@ -277,8 +282,11 @@ static bool __ref msm_pm_spm_power_collapse(
 
 	msm_jtag_restore_state();
 
-	if (collapsed)
+	if (collapsed) {
+#ifdef CONFIG_CPU_V7
 		local_fiq_enable();
+#endif
+	}
 
 	msm_pm_boot_config_after_pc(cpu);
 
@@ -371,7 +379,9 @@ static bool msm_pm_power_collapse(bool from_idle)
  * External Idle/Suspend Functions
  *****************************************************************************/
 
+#ifdef CONFIG_ARM
 static void arch_idle(void) {}
+#endif
 
 static bool (*execute[MSM_PM_SLEEP_MODE_NR])(bool idle) = {
 	[MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT] = msm_pm_swfi,
@@ -501,7 +511,7 @@ bool msm_pm_retention_enabled(void)
 }
 EXPORT_SYMBOL(msm_pm_retention_enabled);
 
-static int msm_cpu_status_probe(struct platform_device *pdev)
+static int __maybe_unused msm_cpu_status_probe(struct platform_device *pdev)
 {
 	u32 cpu;
 	int rc;

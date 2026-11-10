@@ -387,6 +387,8 @@
 
 #define P_RST_P_SW_RST                                 0x1
 
+#define P_HALT_P_PIPE_EMPTY                            0x8
+#define P_HALT_P_LAST_DESC_ZLT                         0x4
 #define P_HALT_P_PROD_HALTED                           0x2
 #define P_HALT_P_HALT                                  0x1
 
@@ -1673,12 +1675,17 @@ void bam_pipe_halt(void *base, u32 pipe, bool halt)
 /* output the content of BAM-level registers */
 void print_bam_reg(void *virt_addr)
 {
-	int i, n, index = 0;
+	int i, n;
+#ifdef CONFIG_SPS_SUPPORT_NDP_BAM
+	int index = 0;
+#endif
 	u32 *bam = (u32 *) virt_addr;
 	u32 ctrl;
 	u32 ver;
 	u32 pipes;
+#ifdef CONFIG_SPS_SUPPORT_NDP_BAM
 	u32 offset = 0;
+#endif
 
 	if (bam == NULL)
 		return;
@@ -1746,7 +1753,9 @@ void print_bam_pipe_reg(void *virt_addr, u32 pipe_index)
 	int i;
 	u32 *bam = (u32 *) virt_addr;
 	u32 pipe = pipe_index;
+#ifdef CONFIG_SPS_SUPPORT_NDP_BAM
 	u32 offset = 0;
+#endif
 
 	if (bam == NULL)
 		return;

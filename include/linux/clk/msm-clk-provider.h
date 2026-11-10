@@ -50,11 +50,7 @@ struct clk_register_data {
 	char *name;
 	u32 offset;
 };
-#ifdef CONFIG_DEBUG_FS
 void clk_debug_print_hw(struct clk *clk, struct seq_file *f);
-#else
-static inline void clk_debug_print_hw(struct clk *clk, struct seq_file *f) {}
-#endif
 
 #define CLK_WARN(clk, cond, fmt, ...) do {				\
 	clk_debug_print_hw(clk, NULL);					\

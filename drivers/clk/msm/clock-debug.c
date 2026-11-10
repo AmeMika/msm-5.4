@@ -709,7 +709,7 @@ out:
 /*
  * Print the names of enabled clocks and their parents if debug_suspend is set
  */
-void clock_debug_print_enabled(bool print_parent)
+void msm_clock_debug_print_enabled(bool print_parent)
 {
 	if (likely(!debug_suspend))
 		return;

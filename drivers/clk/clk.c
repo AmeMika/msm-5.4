@@ -4599,9 +4599,11 @@ EXPORT_SYMBOL_GPL(clk_notifier_unregister);
 #ifdef CONFIG_OF
 static void clk_core_reparent_orphans(void)
 {
+#ifdef CONFIG_COMMON_CLK
 	clk_prepare_lock();
 	clk_core_reparent_orphans_nolock();
 	clk_prepare_unlock();
+#endif
 }
 
 /**
@@ -4933,6 +4935,7 @@ static int of_parse_clkspec(const struct device_node *np, int index,
 	return ret;
 }
 
+#ifdef CONFIG_COMMON_CLK
 static struct clk_hw *
 __of_clk_get_hw_from_provider(struct of_clk_provider *provider,
 			      struct of_phandle_args *clkspec)
@@ -4973,6 +4976,36 @@ of_clk_get_hw_from_clkspec(struct of_phandle_args *clkspec)
 
 	return hw;
 }
+#endif
+
+#ifndef CONFIG_COMMON_CLK
+static struct clk *of_clk_get_legacy_from_provider(
+				struct of_phandle_args *clkspec)
+{
+	struct of_clk_provider *provider;
+	struct clk *clk = ERR_PTR(-EPROBE_DEFER);
+
+	if (!clkspec)
+		return ERR_PTR(-EINVAL);
+
+	if (!of_device_is_available(clkspec->np))
+		return ERR_PTR(-ENOENT);
+
+	mutex_lock(&of_clk_mutex);
+	list_for_each_entry(provider, &of_clk_providers, link) {
+		if (provider->node != clkspec->np)
+			continue;
+		if (provider->get)
+			clk = provider->get(clkspec, provider->data);
+		else
+			clk = ERR_PTR(-EINVAL);
+		break;
+	}
+	mutex_unlock(&of_clk_mutex);
+
+	return clk;
+}
+#endif
 
 /**
  * of_clk_get_from_provider() - Lookup a clock from a clock provider
@@ -4984,12 +5017,17 @@ of_clk_get_hw_from_clkspec(struct of_phandle_args *clkspec)
  */
 struct clk *of_clk_get_from_provider(struct of_phandle_args *clkspec)
 {
+#ifdef CONFIG_COMMON_CLK
 	struct clk_hw *hw = of_clk_get_hw_from_clkspec(clkspec);
 
 	return clk_hw_create_clk(NULL, hw, NULL, __func__);
+#else
+	return of_clk_get_legacy_from_provider(clkspec);
+#endif
 }
 EXPORT_SYMBOL_GPL(of_clk_get_from_provider);
 
+#ifdef CONFIG_COMMON_CLK
 struct clk_hw *of_clk_get_hw(struct device_node *np, int index,
 			     const char *con_id)
 {
@@ -5006,14 +5044,30 @@ struct clk_hw *of_clk_get_hw(struct device_node *np, int index,
 
 	return hw;
 }
+#endif
 
 static struct clk *__of_clk_get(struct device_node *np,
 				int index, const char *dev_id,
 				const char *con_id)
 {
+#ifdef CONFIG_COMMON_CLK
 	struct clk_hw *hw = of_clk_get_hw(np, index, con_id);
 
 	return clk_hw_create_clk(NULL, hw, dev_id, con_id);
+#else
+	struct of_phandle_args clkspec;
+	struct clk *clk;
+	int ret;
+
+	ret = of_parse_clkspec(np, index, con_id, &clkspec);
+	if (ret)
+		return ERR_PTR(ret);
+
+	clk = of_clk_get_legacy_from_provider(&clkspec);
+	of_node_put(clkspec.np);
+
+	return clk;
+#endif
 }
 
 struct clk *of_clk_get(struct device_node *np, int index)
@@ -5110,6 +5164,9 @@ const char *of_clk_get_parent_name(struct device_node *np, int index)
 #if defined(CONFIG_COMMON_CLK)
 			clk_name = __clk_get_name(clk);
 			clk_put(clk);
+#else
+			clk_name = clkspec.args_count == 0 ?
+				   clkspec.np->name : NULL;
 #endif
 		}
 	}

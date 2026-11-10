@@ -386,7 +386,12 @@ void a6xx_cx_regulator_disable_wait(struct regulator *reg,
 	if (!__disable_cx_regulator_wait(reg, device, timeout)) {
 		dev_err(device->dev, "GPU CX wait timeout. Dumping CX votes:\n");
 		/* Dump the cx regulator consumer list */
+#if IS_ENABLED(CONFIG_COMMON_CLK_QCOM)
 		qcom_clk_dump(NULL, reg, false);
+#else
+		dev_err(device->dev, "CX regulator enabled=%d voltage=%d uV\n",
+			regulator_is_enabled(reg), regulator_get_voltage(reg));
+#endif
 	}
 
 	if (ADRENO_QUIRK(adreno_dev, ADRENO_QUIRK_CX_GDSC))
